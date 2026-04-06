@@ -1,14 +1,41 @@
 #!/bin/bash
-DURATION=1800
-echo "🚀 Iniciando Vortex VE - Sessão de 30 min"
-sudo apt update -y && sudo apt install -y xfce4 xfce4-goodies novnc python3-websockify wget > /dev/null 2>&1
-wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-sudo dpkg -i cloudflared-linux-amd64.deb > /dev/null 2>&1
-export DISPLAY=:1
-Xvfb :1 -screen 0 800x600x16 &
-xfce4-session &
-websockify --web /usr/share/novnc/ 6080 localhost:5901 &
-vncserver :1 -geometry 800x600 -depth 16 > /dev/null 2>&1
-echo "✅ Clique no link .trycloudflare.com abaixo:"
-(sleep $DURATION && sudo kill -9 -1) &
-cloudflared tunnel --url http://localhost:6080
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Function to display error messages and exit
+error() {
+    echo "Error: $1"
+    exit 1
+}
+
+# Update package lists
+if ! sudo apt update; then
+    error "Failed to update package lists."
+fi
+
+# Install necessary packages
+REQUIRED_PACKAGES=("python3" "python3-venv" "python3-pip")
+for package in "${REQUIRED_PACKAGES[@]}"; do
+    if ! dpkg -l | grep -q "$package"; then
+        if ! sudo apt install -y "$package"; then
+            error "Failed to install package: $package"
+        fi
+    fi
+done
+
+# Create a virtual environment
+VENV_DIR="venv"
+if [ ! -d "$VENV_DIR" ]; then
+    python3 -m venv "$VENV_DIR" || error "Failed to create virtual environment"
+fi
+
+# Activate the virtual environment
+source "$VENV_DIR/bin/activate" || error "Failed to activate virtual environment"
+
+# Upgrade pip
+if ! pip install --upgrade pip; then
+    error "Failed to upgrade pip"
+fi
+
+echo "VVE setup completed successfully!"
